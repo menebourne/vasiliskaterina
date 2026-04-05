@@ -1,20 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Download, LogOut } from "lucide-react";
+import { Download, LogOut, Mail, Lock, Trash2, ChevronRight } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useInventoryStore } from "@/stores/inventory-store";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
-  const { user, logout } = useAuthStore();
+  const { logout } = useAuthStore();
   const { inventory, products } = useInventoryStore();
   const router = useRouter();
-  const [practiceName, setPracticeName] = useState("Smile Dental Care");
-  const [practiceAddress, setPracticeAddress] = useState("123 Main St, Suite 200, Austin, TX 78701");
 
   const handleExportCSV = () => {
     const headers = ["Product", "Location", "Quantity", "Lot Number", "Expiration Date", "Last Price"];
@@ -32,77 +27,85 @@ export default function SettingsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const mockTeam = [
-    { name: "Dr. Harper", email: "dr.harper@smiledental.com", role: "Admin" },
-    { name: "Maria Rodriguez", email: "maria@smiledental.com", role: "Hygienist" },
-    { name: "James Chen", email: "james@smiledental.com", role: "Assistant" },
-    { name: "Sarah Kim", email: "sarah@smiledental.com", role: "Office Manager" },
-  ];
-
   return (
-    <div className="animate-fade-in max-w-lg space-y-10">
-      {/* Profile */}
+    <div className="animate-fade-in max-w-lg space-y-8">
+      {/* Account */}
       <section>
-        <h3 className="section-title mb-3">Profile</h3>
+        <h3 className="section-title mb-2">Account</h3>
         <div className="card overflow-hidden">
-          <Row label="Name" value={user?.name ?? ""} />
-          <Row label="Email" value={user?.email ?? ""} border />
-          <Row label="Role" value={user?.role ?? ""} border />
+          <SettingsRow
+            icon={<Mail size={18} />}
+            iconBg="bg-[#007AFF]"
+            label="Change Email"
+            onClick={() => {}}
+          />
+          <SettingsRow
+            icon={<Lock size={18} />}
+            iconBg="bg-[#34C759]"
+            label="Change Password"
+            onClick={() => {}}
+            border
+          />
         </div>
       </section>
 
-      {/* Practice */}
+      {/* Data */}
       <section>
-        <h3 className="section-title mb-3">Practice</h3>
-        <div className="card p-4 space-y-3">
-          <Input label="Name" value={practiceName} onChange={(e) => setPracticeName(e.target.value)} />
-          <Input label="Address" value={practiceAddress} onChange={(e) => setPracticeAddress(e.target.value)} />
-          <Button size="sm">Save</Button>
-        </div>
-      </section>
-
-      {/* Export */}
-      <section>
-        <h3 className="section-title mb-3">Data</h3>
-        <Button variant="secondary" size="sm" onClick={handleExportCSV}>
-          <Download size={13} />
-          Export CSV
-        </Button>
-      </section>
-
-      {/* Team */}
-      <section>
-        <h3 className="section-title mb-3">Team</h3>
+        <h3 className="section-title mb-2">Data</h3>
         <div className="card overflow-hidden">
-          {mockTeam.map((member, idx) => (
-            <div key={member.email} className={cn("flex items-center justify-between px-4 py-3", idx > 0 && "border-t border-[rgba(0,0,0,0.05)]")}>
-              <div>
-                <p className="text-sm text-[#1D1D1F]">{member.name}</p>
-                <p className="text-xs text-[#86868B]">{member.email}</p>
-              </div>
-              <span className="text-xs text-[#86868B]">{member.role}</span>
-            </div>
-          ))}
+          <SettingsRow
+            icon={<Download size={18} />}
+            iconBg="bg-[#5856D6]"
+            label="Export Inventory CSV"
+            onClick={handleExportCSV}
+          />
         </div>
       </section>
 
-      {/* Sign out */}
-      <button
-        onClick={() => { logout(); router.push("/login"); }}
-        className="text-sm font-medium text-[#FF3B30] hover:text-[#FF3B30]/80 transition-colors flex items-center gap-1.5"
-      >
-        <LogOut size={13} />
-        Sign out
-      </button>
+      {/* Sign out & delete */}
+      <section>
+        <div className="card overflow-hidden">
+          <SettingsRow
+            icon={<LogOut size={18} />}
+            iconBg="bg-[#8E8E93]"
+            label="Sign Out"
+            onClick={() => { logout(); router.push("/login"); }}
+          />
+          <SettingsRow
+            icon={<Trash2 size={18} />}
+            iconBg="bg-[#FF3B30]"
+            label="Delete Account"
+            labelColor="text-[#FF3B30]"
+            onClick={() => {}}
+            border
+          />
+        </div>
+      </section>
     </div>
   );
 }
 
-function Row({ label, value, border }: { label: string; value: string; border?: boolean }) {
+function SettingsRow({ icon, iconBg, label, labelColor, onClick, border }: {
+  icon: React.ReactNode;
+  iconBg: string;
+  label: string;
+  labelColor?: string;
+  onClick: () => void;
+  border?: boolean;
+}) {
   return (
-    <div className={cn("flex items-baseline justify-between px-4 py-3", border && "border-t border-[rgba(0,0,0,0.05)]")}>
-      <span className="text-xs text-[#86868B]">{label}</span>
-      <span className="text-sm text-[#424245] capitalize">{value}</span>
-    </div>
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-3.5 px-4 py-3 hover-row text-left transition-colors",
+        border && "border-t border-[rgba(0,0,0,0.05)]"
+      )}
+    >
+      <div className={cn("w-[30px] h-[30px] rounded-[7px] flex items-center justify-center flex-shrink-0 text-white", iconBg)}>
+        {icon}
+      </div>
+      <span className={cn("text-[15px] flex-1", labelColor || "text-[#1D1D1F]")}>{label}</span>
+      <ChevronRight size={16} className="text-[#C7C7CC]" />
+    </button>
   );
 }
