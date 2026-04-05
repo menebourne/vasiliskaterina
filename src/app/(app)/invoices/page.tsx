@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { FileText, Plus, ChevronRight, Trash2 } from "lucide-react";
+import { FileText, Plus, ChevronRight, Trash2, Calendar } from "lucide-react";
 import { useInventoryStore } from "@/stores/inventory-store";
 import { getSupplier, getProduct } from "@/lib/mock-data";
 import { formatCurrency, formatDate, cn, generateId } from "@/lib/utils";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,23 +20,104 @@ export default function InvoicesPage() {
   const { invoices, suppliers, products, addInvoice, addProduct } = useInventoryStore();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const sortedInvoices = useMemo(() => [...invoices].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [invoices]);
+  type DatePreset = "all" | "this_month" | "last_month" | "last_3" | "custom";
+  const [preset, setPreset] = useState<DatePreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    switch (preset) {
+      case "this_month":
+        return { from: format(startOfMonth(now), "yyyy-MM-dd"), to: format(endOfMonth(now), "yyyy-MM-dd") };
+      case "last_month": {
+        const last = subMonths(now, 1);
+        return { from: format(startOfMonth(last), "yyyy-MM-dd"), to: format(endOfMonth(last), "yyyy-MM-dd") };
+      }
+      case "last_3":
+        return { from: format(startOfMonth(subMonths(now, 2)), "yyyy-MM-dd"), to: format(endOfMonth(now), "yyyy-MM-dd") };
+      case "custom":
+        return { from: customFrom, to: customTo };
+      default:
+        return { from: "", to: "" };
+    }
+  }, [preset, customFrom, customTo]);
+
+  const filteredInvoices = useMemo(() => {
+    return [...invoices]
+      .filter((inv) => {
+        if (dateRange.from && inv.date < dateRange.from) return false;
+        if (dateRange.to && inv.date > dateRange.to) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [invoices, dateRange]);
+
+  const presets: { value: DatePreset; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "this_month", label: "This Month" },
+    { value: "last_month", label: "Last Month" },
+    { value: "last_3", label: "Last 3 Months" },
+    { value: "custom", label: "Custom" },
+  ];
 
   return (
     <div className="animate-fade-in max-w-3xl">
-      <div className="flex items-center justify-between mb-5">
-        <div />
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-[#E8E8ED] rounded-[10px] p-[3px]">
+            {presets.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setPreset(p.value)}
+                className={cn(
+                  "px-3 py-[5px] rounded-[8px] text-[13px] font-medium transition-all duration-200",
+                  preset === p.value
+                    ? "bg-white text-[#1D1D1F] shadow-[0_0.5px_1px_rgba(0,0,0,0.04),0_1px_3px_rgba(0,0,0,0.06)]"
+                    : "text-[#6E6E73] hover:text-[#424245]"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <Button size="sm" onClick={() => setShowAddModal(true)}>
           <Plus size={15} />
           New Invoice
         </Button>
       </div>
 
-      <h2 className="section-title">Invoices</h2>
+      {/* Custom date range */}
+      {preset === "custom" && (
+        <div className="flex items-center gap-2 mb-4">
+          <Calendar size={15} className="text-[#86868B]" />
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="bg-[#F5F5F7] rounded-[10px] px-3 py-[7px] text-[13px] text-[#1D1D1F] focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,122,255,0.25)] transition-shadow"
+          />
+          <span className="text-[13px] text-[#AEAEB2]">—</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="bg-[#F5F5F7] rounded-[10px] px-3 py-[7px] text-[13px] text-[#1D1D1F] focus:outline-none focus:ring-[3px] focus:ring-[rgba(0,122,255,0.25)] transition-shadow"
+          />
+        </div>
+      )}
+
+      <h2 className="section-title">
+        {filteredInvoices.length} {filteredInvoices.length === 1 ? "invoice" : "invoices"}
+      </h2>
       <div className="card overflow-hidden">
-        {sortedInvoices.length === 0 ? (
-          <div className="py-16 text-center text-[15px] text-[#86868B]">No invoices yet</div>
-        ) : sortedInvoices.map((invoice, idx) => {
+        {filteredInvoices.length === 0 ? (
+          <div className="py-16 text-center text-[15px] text-[#86868B]">
+            {preset !== "all" ? "No invoices in this date range" : "No invoices yet"}
+          </div>
+        ) : filteredInvoices.map((invoice, idx) => {
           const supplier = getSupplier(invoice.supplierId);
           return (
             <button
